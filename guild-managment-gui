@@ -86,7 +86,7 @@ function isPlayerGuildOwner(guildName, playerGraalId) {
 function isPlayerInGivenGuild(guildName, playerGraalId) {
   this.join("sqlfunctions");
 
-  temp.query = "select * from guildmember where graalid = '" @ temp.playerGraalId @ "' AND (select guildid from Guild_GuildMember where MemberGraalId = '" @ temp.playerGraalId @ "')";
+  temp.query = "select * from guild_guildmember where guildname = '" @ temp.guildName @ "' and membergraalid = '" @ temp.playerGraalId "'";
   temp.result = executeSQL(temp.query, true);
 
   return checkSqlResult(temp.result);
@@ -130,16 +130,35 @@ function isPlayerInGuildMemberTable(playerGraalId) {
 }
 
 function addPlayerToGuildMemberTable(playerGraalId) {
+  this.join("sqlfunctions");
+  temp.query = "insert into guildmember (GraalId) values ('" @ temp.playerGraalId @ "')";
+  temp.result = executeSQL(temp.query, true);
 
+  if(temp.result != false || temp.result != "") {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 // change player guildid to guildid of guild
 function addPlayerToGuild(guildName, playerGraalId) {
   this.join("sqlfunctions");
-  temp.isPlayerInTable = isPlayerInGuildMemberTable(temp.playerGraalId);
+  temp.isPlayerInGuildMemberTable = isPlayerInGuildMemberTable(temp.playerGraalId);
+  if(!isPlayerInGuildMemberTable) {
+    // add player to guildmember table
+    addPlayerToGuildMemberTable(temp.playerGraalId);
+  }
 
-  if(isPlayerInTable) {
-    // change the id of the
+  temp.query = "insert into guild_guildmember (guildname, membergraalid) values ('" @ temp.guildName @ "', '" @ temp.playerGraalId @ "')";
+  temp.result = executeSQL(temp.query, true);
+
+  if(temp.result != false || temp.result != "") {
+    // increase guildmember count
+    modifyGuildMemberCount(temp.guildName, "Add");
+    triggerclient("gui", name, "Player successfully added to guild.";
+  } else {
+    triggerclient("gui", name, "Player unsuccessfully added to guild.";
   }
 
 }
@@ -151,7 +170,7 @@ function createGuild(guildName, playerGraalId) {
   temp.guildid = server.uniqueGuildId + 1;
   server.uniqueGuildId = temp.guildid;
 
-  temp.query = "INSERT INTO Guild (GuildId, GuildName, GuildOwnerId) values ("@ temp.guildid @ ", '" @ temp.guildName @ "', '" @ temp.playerGraalId @ "')";
+  temp.query = "INSERT INTO Guild (GuildName, OwnerGraalId) values ('" @ temp.guildName @ "', '" @ temp.playerGraalId @ "')";
   temp.result = executeSQL(temp.query, true);
 
   if(temp.result != false || temp.result != "") {
@@ -186,6 +205,7 @@ function onActionServerSide(command, guildName, playerGraalId) {
   temp.playerOwnsGivenGuild = playerOwnsGivenGuild(temp.guildName,temp.playerGraalId);
   temp.guildMaxMembers = isGuildMaxMembers(temp.guildName);
   temp.isPlayerGuildOwner = isPlayerGuildOwner(temp.guildName,temp.playerGraalId);
+  temp.isPlayerInGivenGuild = isPlayerInGivenGuild(temp.guildName, temp.playerGraalId);
 
   switch(command) {
     case "Create_Guild":
@@ -221,7 +241,7 @@ function onActionServerSide(command, guildName, playerGraalId) {
         triggerclient("gui", name, "Player doesnt exist. Please try again.");
         return;
       } else if(temp.guildExists && temp.playerExists){
-        if (!guildMaxMembers) {
+        if (!temp.guildMaxMembers && !temp.isPlayerInGivenGuild) {
           addPlayerToGuild(temp.guildName, temp.playerGraalId);
         }
       }
@@ -404,6 +424,5 @@ function drawGui() {
       y = Remove_Player_From_Guild_Btn.y;
       text = "Add Player";
     }
-
   }
 }
